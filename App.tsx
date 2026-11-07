@@ -10,6 +10,7 @@ import { Progress, loadProgress, saveProgress, today } from './src/storage';
 import { StorkMode } from './src/StorkView';
 import { JourneyBar } from './src/JourneyBar';
 import { Scene } from './src/Scene';
+import { FadeIn } from './src/FadeIn';
 import { colors, fonts, scenes, timeOfDay } from './src/theme';
 import { endSession, endStaleSessions, showSession } from './src/liveSession';
 import type { SessionActivityProps } from './src/SessionActivity';
@@ -109,6 +110,8 @@ function Main() {
   }
 
   function startFocus() {
+    // Ask for motion access now, so the break can start the moment focus ends.
+    Pedometer.requestPermissionsAsync();
     const start = Date.now();
     const end = start + FOCUS_MS;
     startedAt.current = start;
@@ -118,8 +121,7 @@ function Main() {
     showSession(activity('focus', start, end, 'Leyleko is on the chimney', `Focus · session ${(progress?.sessionsToday ?? 0) + 1} today`));
   }
 
-  async function startBreak() {
-    await Pedometer.requestPermissionsAsync();
+  function startBreak() {
     const start = Date.now();
     const end = start + BREAK_MS;
     breakStart.current = new Date(start);
@@ -195,7 +197,7 @@ function Main() {
       <View style={[styles.ui, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 20 }]}>
         <JourneyBar km={progress.km} color={ink} flying={phase === 'break'} />
 
-        <View style={styles.mid}>
+        <FadeIn key={`mid-${phase}`} style={styles.mid}>
           {phase === 'idle' && (
             <>
               <Text style={[styles.label, { color: ink }]}>Leyleko is resting in the nest</Text>
@@ -245,9 +247,9 @@ function Main() {
               </Text>
             </>
           )}
-        </View>
+        </FadeIn>
 
-        <View style={styles.actions}>
+        <FadeIn key={`actions-${phase}`} style={styles.actions}>
           {(phase === 'idle' || phase === 'result') && (
             <Pressable style={({ pressed }) => [styles.button, pressed && styles.pressed]} onPress={startFocus}>
               <Text style={styles.buttonText}>{phase === 'idle' ? 'Start focus' : 'Start next focus'}</Text>
@@ -263,7 +265,7 @@ function Main() {
               <Text style={[styles.sub, { color: ink }]}>Skip (dev)</Text>
             </Pressable>
           )}
-        </View>
+        </FadeIn>
       </View>
     </View>
   );

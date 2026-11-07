@@ -5,6 +5,9 @@ export type Stop = {
   km: number;
 };
 
+// Development builds shrink the route to a tenth so a few breaks reach new stops.
+const DEV_SCALE = __DEV__ ? 0.1 : 1;
+
 export const ROUTE: Stop[] = [
   { name: 'Istanbul · Bosphorus', km: 0 },
   { name: 'Konya · Anatolian plateau', km: 550 },
@@ -16,7 +19,7 @@ export const ROUTE: Stop[] = [
   { name: 'Lake Victoria', km: 5400 },
   { name: 'Victoria Falls', km: 7500 },
   { name: 'Cape Town', km: 10000 },
-];
+].map((s) => ({ ...s, km: Math.round(s.km * DEV_SCALE) }));
 
 export const ROUTE_KM = ROUTE[ROUTE.length - 1].km;
 
