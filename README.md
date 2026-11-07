@@ -15,9 +15,9 @@ npx expo start
 
 - **iOS:** step counting works in Expo Go.
 - **Android:** Expo Go lacks the activity-recognition permission, so use a development build: `npx expo run:android`.
-- **Lock screen Live Activity:** needs a native build (`npx expo run:ios`, Xcode 26.4+). Expo Go runs the app without it.
+- **Lock screen Live Activity:** needs a native build (`npx expo run:ios`). Expo Go runs the app without it. Xcode 26.2/26.3 works thanks to a small `expo-modules-jsi` fix in `patches/`, applied by `patch-package` on install.
 
-In development builds a "Skip (dev)" link fast-forwards the timer.
+In development builds a "Skip (dev)" link fast-forwards the timer, and the migration route is shrunk to a tenth so new stops come quickly.
 
 ## How it works
 
