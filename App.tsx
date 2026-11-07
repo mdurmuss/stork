@@ -11,6 +11,8 @@ import { StorkMode } from './src/StorkView';
 import { JourneyBar } from './src/JourneyBar';
 import { Scene } from './src/Scene';
 import { colors, fonts, scenes, timeOfDay } from './src/theme';
+import { endSession, endStaleSessions, showSession } from './src/liveSession';
+import type { SessionActivityProps } from './src/SessionActivity';
 
 const FOCUS_MS = 25 * 60 * 1000;
 const BREAK_MS = 5 * 60 * 1000;
@@ -43,9 +45,12 @@ function Main() {
   const [lastGain, setLastGain] = useState(0);
   const [reached, setReached] = useState<Stop | null>(null);
   const breakStart = useRef(new Date());
+  const startedAt = useRef(0);
+  const reportedSteps = useRef(0);
 
   useEffect(() => {
     loadProgress().then(setProgress);
+    endStaleSessions();
   }, []);
 
   // Remaining time is derived from a fixed end timestamp, so it stays correct
@@ -62,6 +67,14 @@ function Main() {
     return () => sub.remove();
   }, [phase]);
 
+  // Keep the lock screen in sync during the break, without spamming iOS with updates.
+  useEffect(() => {
+    if (phase !== 'break') return;
+    if (!stretch && steps - reportedSteps.current < 25) return;
+    reportedSteps.current = steps;
+    showSession(activity('break', startedAt.current, endAt, 'Walk! Leyleko is flying', breakSubtitle()));
+  }, [steps, stretch]);
+
   const remaining = Math.max(0, endAt - now);
 
   useEffect(() => {
@@ -70,20 +83,54 @@ function Main() {
     else if (phase === 'break') finishBreak();
   }, [remaining, phase]);
 
+  function activity(
+    p: SessionActivityProps['phase'],
+    startAt: number,
+    end: number,
+    title: string,
+    subtitle: string,
+    km = progress?.km ?? 0,
+  ): SessionActivityProps {
+    const upcoming = nextStop(km);
+    return {
+      phase: p,
+      startAt,
+      endAt: end,
+      title,
+      subtitle,
+      km: Math.round(km),
+      nextName: upcoming ? `${upcoming.name.split(' · ')[0]} in ${Math.round(upcoming.km - km)} km` : 'Cape Town reached',
+      progress: km / ROUTE_KM,
+    };
+  }
+
+  function breakSubtitle() {
+    return stretch ? 'Desk stretch · gliding slowly' : `${steps} steps · +${steps >= MIN_STEPS ? steps : 0} km`;
+  }
+
   function startFocus() {
-    setEndAt(Date.now() + FOCUS_MS);
-    setNow(Date.now());
+    const start = Date.now();
+    const end = start + FOCUS_MS;
+    startedAt.current = start;
+    setEndAt(end);
+    setNow(start);
     setPhase('focus');
+    showSession(activity('focus', start, end, 'Leyleko is on the chimney', `Focus · session ${(progress?.sessionsToday ?? 0) + 1} today`));
   }
 
   async function startBreak() {
     await Pedometer.requestPermissionsAsync();
-    breakStart.current = new Date();
+    const start = Date.now();
+    const end = start + BREAK_MS;
+    breakStart.current = new Date(start);
+    startedAt.current = start;
+    reportedSteps.current = 0;
     setSteps(0);
     setStretch(false);
-    setEndAt(Date.now() + BREAK_MS);
-    setNow(Date.now());
+    setEndAt(end);
+    setNow(start);
     setPhase('break');
+    showSession(activity('break', start, end, 'Walk! Leyleko is flying', '0 steps'));
   }
 
   async function finishBreak() {
@@ -104,7 +151,19 @@ function Main() {
       day: today(),
     };
     const stopAfter = currentStop(next.km);
-    setReached(stopAfter !== currentStop(base.km) ? stopAfter : null);
+    const newStop = stopAfter !== currentStop(base.km) ? stopAfter : null;
+    setReached(newStop);
+    const doneAt = Date.now();
+    endSession(
+      activity(
+        'done',
+        doneAt,
+        doneAt,
+        gain > 0 ? `Lak lak! We flew ${gain} km` : 'Leyleko stayed in the nest',
+        newStop ? `We reached ${newStop.name}!` : gain > 0 ? 'Open Stork to start the next focus' : `Walk ${MIN_STEPS}+ steps next break`,
+        next.km,
+      ),
+    );
     setProgress(next);
     saveProgress(next);
     setSteps(total);

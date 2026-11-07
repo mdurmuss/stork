@@ -7,7 +7,8 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.mdurmus.stork"
     },
     "android": {
       "adaptiveIcon": {
@@ -28,7 +29,8 @@
           "motionPermission": "Stork counts your steps during breaks so your stork can fly."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-widgets"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
