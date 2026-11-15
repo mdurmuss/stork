@@ -5,6 +5,8 @@ export type Progress = {
   sessionsToday: number;
   // Local date (YYYY-MM-DD) that sessionsToday belongs to.
   day: string;
+  // Round trips completed, each ending with the fisherman on Lake Uluabat.
+  migrations: number;
 };
 
 const KEY = 'stork/progress';
@@ -15,11 +17,12 @@ export function today(): string {
 }
 
 export async function loadProgress(): Promise<Progress> {
-  const fresh: Progress = { km: 0, sessionsToday: 0, day: today() };
+  const fresh: Progress = { km: 0, sessionsToday: 0, day: today(), migrations: 0 };
   try {
     const raw = await AsyncStorage.getItem(KEY);
     if (!raw) return fresh;
-    const saved: Progress = JSON.parse(raw);
+    // Older saves predate some fields; fill them from the fresh defaults.
+    const saved: Progress = { ...fresh, ...JSON.parse(raw) };
     return saved.day === today() ? saved : { ...saved, sessionsToday: 0, day: today() };
   } catch {
     return fresh;

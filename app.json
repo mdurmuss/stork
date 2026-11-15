@@ -31,7 +31,15 @@
         }
       ],
       "expo-font",
-      "expo-widgets"
+      "expo-widgets",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
+        }
+      ]
     ],
     "web": {
       "favicon": "./assets/favicon.png"

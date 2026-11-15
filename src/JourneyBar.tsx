@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
-import { ROUTE, ROUTE_KM, currentStop, nextStop } from './route';
+import { ROUTE_KM, Stop, currentStop, legOf, nextStop } from './route';
 import { colors, fonts } from './theme';
 
 type Props = {
   km: number;
   color: string;
   flying?: boolean;
+  // Shown at the end of the title row, such as the mute button.
+  accessory?: ReactNode;
 };
 
 const PATH_W = 260;
@@ -15,17 +17,17 @@ const X0 = 8;
 const X1 = 252;
 
 // Stops are spaced evenly so the early, close-together ones stay readable.
-function pathX(km: number): number {
-  const i = ROUTE.findIndex((s) => s.km > km);
+function pathX(leg: Stop[], km: number): number {
+  const i = leg.findIndex((s) => s.km > km);
   if (i === -1) return X1;
-  const a = ROUTE[i - 1];
-  const b = ROUTE[i];
-  const step = (X1 - X0) / (ROUTE.length - 1);
+  const a = leg[i - 1];
+  const b = leg[i];
+  const step = (X1 - X0) / (leg.length - 1);
   return X0 + step * (i - 1 + (km - a.km) / (b.km - a.km));
 }
 
 // Where Leyleko is on the route; when km increases the path fills and the number counts up.
-export function JourneyBar({ km, color, flying }: Props) {
+export function JourneyBar({ km, color, flying, accessory }: Props) {
   const value = useRef(new Animated.Value(km)).current;
   const [shownKm, setShownKm] = useState(km);
 
@@ -41,12 +43,19 @@ export function JourneyBar({ km, color, flying }: Props) {
 
   const stop = currentStop(shownKm);
   const upcoming = nextStop(shownKm);
-  const x = pathX(shownKm);
-  const step = (X1 - X0) / (ROUTE.length - 1);
+  // One leg at a time: autumn to Cape Town, then spring back home.
+  const leg = legOf(shownKm);
+  const x = pathX(leg, shownKm);
+  const step = (X1 - X0) / (leg.length - 1);
 
   return (
     <View style={styles.wrap}>
-      <Text style={[styles.stop, { color }]}>{flying && upcoming ? `Flying to ${upcoming.name.split(' · ')[0]}` : stop.name}</Text>
+      <View style={styles.titleRow}>
+        <Text style={[styles.stop, { color }]} numberOfLines={1}>
+          {flying && upcoming ? `Flying to ${upcoming.name.split(' · ')[0]}` : stop.name}
+        </Text>
+        {accessory}
+      </View>
       <Text style={[styles.km, { color }]}>
         {Math.round(shownKm).toLocaleString('en-US')} / {ROUTE_KM.toLocaleString('en-US')} km
         {upcoming ? ` · ${upcoming.name.split(' · ')[0]} in ${Math.round(upcoming.km - shownKm)} km` : ' · arrived!'}
@@ -54,7 +63,7 @@ export function JourneyBar({ km, color, flying }: Props) {
       <Svg style={{ width: '100%', aspectRatio: PATH_W / 20 }} viewBox={`0 0 ${PATH_W} 20`}>
         <Line x1={X0} y1={10} x2={X1} y2={10} stroke={color} strokeWidth={2} strokeDasharray="2 6" strokeLinecap="round" opacity={0.5} />
         <Line x1={X0} y1={10} x2={x} y2={10} stroke={color} strokeWidth={3} strokeLinecap="round" />
-        {ROUTE.slice(1).map((s, i) => (
+        {leg.slice(1).map((s, i) => (
           <Circle
             key={s.name}
             cx={X0 + step * (i + 1)}
@@ -73,6 +82,7 @@ export function JourneyBar({ km, color, flying }: Props) {
 
 const styles = StyleSheet.create({
   wrap: { gap: 2 },
-  stop: { fontFamily: fonts.displayBold, fontSize: 24, lineHeight: 30 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  stop: { flex: 1, fontFamily: fonts.displayBold, fontSize: 24, lineHeight: 30 },
   km: { fontFamily: fonts.body, fontSize: 14, opacity: 0.8, fontVariant: ['tabular-nums'], marginBottom: 6 },
 });
